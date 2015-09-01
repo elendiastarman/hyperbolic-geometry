@@ -1,0 +1,4 @@
+.gitignore
+*bak1
+*bak2
+* frames/
