@@ -24,13 +24,16 @@ End Type
 n = 3
 k = 7
 
-;init(n,k)
-;draw(R)
+construct = 0
 
-p1.point = createPoint(-1,1)
-p2.point = createPoint(1,-1)
-p1\numLinks = 1
-p1\links[1] = p2
+If construct = 1
+	p1.point = createPoint(-1,1)
+	p2.point = createPoint(1,-1)
+	p1\numLinks = 1
+	p1\links[1] = p2
+Else
+	init(n,k)
+EndIf
 
 mp1.point = createPoint(-1,-1, 255,0,0)
 mp1\mouseControlled = 1
@@ -38,17 +41,16 @@ mp2.point = createPoint(1,1, 0,0,255)
 mp2\mouseControlled = 2
 mp1\numLinks = 1
 mp1\links[1] = mp2
-
-
-solutionX# = 1.5
-solutionY# = 0.5
-
-translatePoint(p1, -solutionX,-solutionY)
-translatePoint(p2, -solutionX,-solutionY)
-translatePoint(mp1, -solutionX,-solutionY)
-translatePoint(mp2, -solutionX,-solutionY)
-
-cam.camera = New camera
+	
+If construct = 1	
+	solutionX# = 1.5
+	solutionY# = 0.5
+	
+	translatePoint(p1, -solutionX,-solutionY)
+	translatePoint(p2, -solutionX,-solutionY)
+	translatePoint(mp1, -solutionX,-solutionY)
+	translatePoint(mp2, -solutionX,-solutionY)
+EndIf
 
 
 draw(R)
@@ -424,7 +426,7 @@ Function draw(R)
 			;put a dot on intersections
 			If p1 <> mp1 And p1 <> mp2
 				Local iXY#[2]
-				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
+				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 0)
 				
 				intX# = transform(iXY[1],iXY[2],1)*R + gw/2
 				intY# = transform(iXY[1],iXY[2],2)*R + gh/2
@@ -820,7 +822,7 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 	
 	tk# = Sqr( q*q/(q*q - p*p) )
 	
-	k# = p/Sqr(q*q-p*p)
+	k# = -p*Sgn(q)/Sqr(q*q-p*p)
 	
 ;	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
 ;	tk# = Sqr( 1 + (tU1*tV2 - tU2*tV1)^2 / denom )
