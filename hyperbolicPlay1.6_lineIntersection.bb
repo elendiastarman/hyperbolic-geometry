@@ -327,6 +327,8 @@ Function draw(R)
 		EndIf
 	Next
 	
+	intNum = 0
+	
 	For p1.point = Each point
 		For idx = 1 To p1\numlinks
 			p2.point = p1\links[idx]
@@ -403,17 +405,21 @@ Function draw(R)
 			;end of line drawing
 			
 			;put a dot on intersections
+			If p1 <> mp1 And p1 <> mp2
+				Local iXY#[2]
+				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
+				
+				intX# = transform(iXY[1],iXY[2],1)*R + gw/2
+				intY# = transform(iXY[1],iXY[2],2)*R + gh/2
+				intNum = intNum + 1
+				
+				Color 0,255,0
+				circ(intX,intY, 2,1)
+				Text intX,intY, intNum
+			EndIf
 			
-			Local iXY#[2]
-			intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
-			
-			intX# = transform(iXY[1],iXY[2],1)*R + gw/2
-			intY# = transform(iXY[1],iXY[2],2)*R + gh/2
-			
-			Color 0,255,0
-			circ(intX,intY, 2,1)
 		Next
-		
+
 	Next
 	
 	Color 255,255,0
@@ -732,6 +738,10 @@ End Function
 
 Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 
+	If (x1 = u1 And y1 = v1 And x2 = u2 And y2 = v2) Or (x1 = u2 And y1 = v2 And x2 = u1 And y2 = v1)
+		Return
+	EndIf
+
 	If debug = 1
 		DebugLog "---------------------"
 		DebugLog "Original coordinates:"
@@ -773,8 +783,24 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 		DebugLog ""
 	EndIf
 	
-	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
-	k# = (tU1*tV2 - tU2*tV1) * Sqr(1/denom)
+	s# = tU1
+	t# = tV1
+	u# = tU2
+	v# = tV2
+	
+	tst# = Sqr(1 + s*s + t*t)
+	tuv# = Sqr(1 + u*u + v*v)
+	
+	p# = s*v - u*t
+	q# = t*tuv - v*tst
+	
+	tk# = Sqr( q*q/(q*q - p*p) )
+	
+	k# = p/Sqr(q*q-p*p)
+	
+;	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
+;	tk# = Sqr( 1 + (tU1*tV2 - tU2*tV1)^2 / denom )
+;	k# = (tU1*tV2*tk - tU2*tV1*tk) / (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))
 	
 	If debug = 1
 		DebugLog "Solution: k = "+k
