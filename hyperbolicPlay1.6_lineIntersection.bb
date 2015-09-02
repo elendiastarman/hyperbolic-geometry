@@ -428,13 +428,15 @@ Function draw(R)
 				Local iXY#[2]
 				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 0)
 				
-				intX# = transform(iXY[1],iXY[2],1)*R + gw/2
-				intY# = transform(iXY[1],iXY[2],2)*R + gh/2
-				intNum = intNum + 1
-				
-				Color 0,255,0
-				circ(intX,intY, 2,1)
-				Text intX,intY, intNum
+				If iXY[0] = 1
+					intX# = transform(iXY[1],iXY[2],1)*R + gw/2
+					intY# = transform(iXY[1],iXY[2],2)*R + gh/2
+					intNum = intNum + 1
+					
+					Color 0,255,0
+					circ(intX,intY, 2,1)
+					Text intX,intY, intNum
+				EndIf
 			EndIf
 			
 		Next
@@ -762,7 +764,9 @@ Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 
 End Function
 
-Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
+Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0) ;XY[0] will be used to store failure (0) or success (1)
+
+	XY[0] = 0
 
 	If (x1 = u1 And y1 = v1 And x2 = u2 And y2 = v2) Or (x1 = u2 And y1 = v2 And x2 = u1 And y2 = v1)
 		Return
@@ -820,7 +824,9 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 	p# = s*v - u*t
 	q# = t*tuv - v*tst
 	
-	tk# = Sqr( q*q/(q*q - p*p) )
+	If q*q - p*p <= 0 Return
+	
+	;tk# = Abs(q)*Sqr( 1/(q*q - p*p) )
 	
 	k# = -p*Sgn(q)/Sqr(q*q-p*p)
 	
@@ -882,7 +888,7 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 ;	c = -u1*tuv2 + u2*tuv1
 ;	d = -v1*tuv2 + v1*tuv2
 	
-	
+	XY[0] = 1
 	
 	Return
 
