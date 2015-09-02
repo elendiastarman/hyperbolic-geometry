@@ -405,7 +405,7 @@ Function draw(R)
 			;put a dot on intersections
 			
 			Local iXY#[2]
-			intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY)
+			intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
 			
 			intX# = transform(iXY[1],iXY[2],1)*R + gw/2
 			intY# = transform(iXY[1],iXY[2],2)*R + gh/2
@@ -730,7 +730,17 @@ Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 
 End Function
 
-Function intersection#(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2])
+Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
+
+	If debug = 1
+		DebugLog "---------------------"
+		DebugLog "Original coordinates:"
+		DebugLog " x1 = "+x1+", y1 = "+y1
+		DebugLog " x2 = "+x2+", y2 = "+y2
+		DebugLog " u1 = "+u1+", v1 = "+v1
+		DebugLog " u2 = "+u2+", v2 = "+v2
+		DebugLog ""
+	EndIf
 
 	Local tXY_1#[2]
 	Local tXY_2#[2]
@@ -740,6 +750,14 @@ Function intersection#(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2])
 	translateXY(u1,v1, x1,y1, tXY_2)
 	translateXY(u2,v2, x1,y1, tXY_3)
 	
+	If debug = 1
+		DebugLog "Translated coordinates:"
+		DebugLog " tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog " tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog " tXY_3[1] = "+tXY_3[1]+", tXY_3[2] = "+tXY_3[2]
+		DebugLog ""
+	EndIf
+	
 	ang# = ATan2(tXY_1[2],tXY_1[1]) ;calculate angle to (x2,y2)
 	
 	tU1# = tXY_2[1]*Cos(-ang) - tXY_2[2]*Sin(-ang) ;rotate (u1,v1) by -ang
@@ -748,8 +766,19 @@ Function intersection#(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2])
 	tU2# = tXY_3[1]*Cos(-ang) - tXY_3[2]*Sin(-ang) ;rotate (u2,v2) by -ang
 	tV2# = tXY_3[1]*Sin(-ang) + tXY_3[2]*Cos(-ang)
 	
+	If debug = 1
+		DebugLog "Rotated coordinates (rotated by "+ang+" degrees):"
+		DebugLog " tU1 = "+tU1+", tV1 = "+tV1
+		DebugLog " tU2 = "+tU2+", tV2 = "+tV2
+		DebugLog ""
+	EndIf
+	
 	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
 	k# = (tU1*tV2 - tU2*tV1) * Sqr(1/denom)
+	
+	If debug = 1
+		DebugLog "Solution: k = "+k
+	EndIf
 	
 	;intersection point is at (k,0)
 	
@@ -757,6 +786,35 @@ Function intersection#(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2])
 	kY# = k*Sin(ang)
 	
 	translateXY(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
+	
+	If debug = 1
+		DebugLog "Final solution:"
+		DebugLog " XY[1] = "+XY[1]+", XY[2] = "+XY[2]
+		DebugLog ""
+	EndIf
+	
+	If debug = 1
+		DebugLog "Sanity check:"
+		
+		translateXY(x1,y1, XY[1],XY[2], tXY_1)
+		translateXY(x2,y2, XY[1],XY[2], tXY_2)
+		
+		DebugLog " First pair:"
+		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog "  tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog "  tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1] = "+(tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1])
+		
+		translateXY(u1,v1, XY[1],XY[2], tXY_1)
+		translateXY(u2,v2, XY[1],XY[2], tXY_2)
+		
+		DebugLog " Second pair:"
+		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog "  tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog "  tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1] = "+(tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1])
+		
+		DebugLog "---------------------"
+		DebugLog ""
+	EndIf
 
 ;	txy1# = Sqr(1+x1*x1+y1*y1)
 ;	txy2# = Sqr(1+x2*x2+y2*y2)
