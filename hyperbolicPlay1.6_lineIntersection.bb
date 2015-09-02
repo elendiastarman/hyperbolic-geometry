@@ -275,8 +275,7 @@ Function getInput(R)
 		mbutton = 2
 	EndIf
 	
-	If mbutton > 0
-		;DebugLog mbutton
+	If mbutton > 0 And (MouseXSpeed() Or MouseYSpeed())
 		u1# = (mx-GraphicsWidth()/2.)/R
 		v1# = (my-GraphicsHeight()/2.)/R
 		
@@ -284,7 +283,7 @@ Function getInput(R)
 		y1# = invTransform(u1,v1,2)
 		
 		Local tXY#[2]
-		translateXY(x1,y1, -cam\x,-cam\y, tXY)
+		translateXY(x1,y1, cam\x,cam\y, tXY)
 		
 		p.point = Last point
 		While p <> First point And p\mouseControlled <> mbutton
@@ -426,11 +425,13 @@ Function draw(R)
 			;put a dot on intersections
 			If p1 <> mp1 And p1 <> mp2
 				Local iXY#[2]
-				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 0)
+				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
 				
 				If iXY[0] = 1
-					intX# = transform(iXY[1],iXY[2],1)*R + gw/2
-					intY# = transform(iXY[1],iXY[2],2)*R + gh/2
+					translateXY(-iXY[1],iXY[2], cam\x,cam\y, iXY)
+					
+					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
+					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
 					intNum = intNum + 1
 					
 					Color 0,255,0
@@ -764,8 +765,9 @@ Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 
 End Function
 
-Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0) ;XY[0] will be used to store failure (0) or success (1)
+Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, debug=0) ;strict checks the line >segments<
 
+	;XY[0] will be used to store failure (0) or success (1)
 	XY[0] = 0
 
 	If (x1 = u1 And y1 = v1 And x2 = u2 And y2 = v2) Or (x1 = u2 And y1 = v2 And x2 = u1 And y2 = v1)
@@ -830,10 +832,6 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0) ;XY[
 	
 	k# = -p*Sgn(q)/Sqr(q*q-p*p)
 	
-;	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
-;	tk# = Sqr( 1 + (tU1*tV2 - tU2*tV1)^2 / denom )
-;	k# = (tU1*tV2*tk - tU2*tV1*tk) / (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))
-	
 	If debug = 1
 		DebugLog "Solution: k = "+k
 	EndIf
@@ -845,13 +843,25 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0) ;XY[
 	
 	translateXY(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
 	
-	XY[1] = -XY[1]
+	XY[1] = -XY[1] ;I don't really know WHY
 	
 	If debug = 1
 		DebugLog "Final solution:"
 		DebugLog " XY[1] = "+XY[1]+", XY[2] = "+XY[2]
 		DebugLog ""
 	EndIf
+	
+	
+	;line segment test if desired
+	If strict = 1
+		If k >= 0 And k <= Sqr(tXY_1[1]^2 + tXY_1[2]^2) And tV1*tV2 <= 0
+			XY[0] = 1
+		EndIf
+	Else
+		XY[0] = 1
+	EndIf
+	
+	
 	
 	If debug = 1
 		DebugLog "Sanity check:"
@@ -888,7 +898,7 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0) ;XY[
 ;	c = -u1*tuv2 + u2*tuv1
 ;	d = -v1*tuv2 + v1*tuv2
 	
-	XY[0] = 1
+;	XY[0] = 1
 	
 	Return
 
