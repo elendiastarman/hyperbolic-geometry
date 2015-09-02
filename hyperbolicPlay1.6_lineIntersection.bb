@@ -24,15 +24,32 @@ End Type
 n = 3
 k = 7
 
-init(n,k)
+;init(n,k)
 ;draw(R)
 
-mp1.point = createPoint(0,0, 255,0,0)
+p1.point = createPoint(-1,1)
+p2.point = createPoint(1,-1)
+p1\numLinks = 1
+p1\links[1] = p2
+
+mp1.point = createPoint(-1,-1, 255,0,0)
 mp1\mouseControlled = 1
-mp2.point = createPoint(0,0, 0,0,255)
+mp2.point = createPoint(1,1, 0,0,255)
 mp2\mouseControlled = 2
 mp1\numLinks = 1
 mp1\links[1] = mp2
+
+
+solutionX# = 1.5
+solutionY# = 0.5
+
+translatePoint(p1, -solutionX,-solutionY)
+translatePoint(p2, -solutionX,-solutionY)
+translatePoint(mp1, -solutionX,-solutionY)
+translatePoint(mp2, -solutionX,-solutionY)
+
+cam.camera = New camera
+
 
 draw(R)
 
@@ -524,6 +541,13 @@ Function translateXY#(px#,py#, tx#,ty#, out#[2]) ;tx,ty to origin
 
 End Function
 
+Function translatePoint(p.point, tx#,ty#)
+	Local out#[2]
+	translateXY(p\x,p\y, tx,ty, out)
+	p\x = out[1]
+	p\y = out[2]
+End Function
+
 Function transform#(x#,y#, which)
 
 	;If x*x+y*y > 1
@@ -812,6 +836,8 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], debug=0)
 	kY# = k*Sin(ang)
 	
 	translateXY(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
+	
+	XY[1] = -XY[1]
 	
 	If debug = 1
 		DebugLog "Final solution:"
