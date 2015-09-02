@@ -319,7 +319,7 @@ Function draw(R)
 	mp2.point = Null
 	
 	For p.point = Each point
-		DebugLog p\mouseControlled
+;		DebugLog p\mouseControlled
 		If p\mouseControlled = 1
 			mp1 = p
 		ElseIf p\mouseControlled = 2
@@ -730,32 +730,47 @@ Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 
 End Function
 
-Function intersection(x1,y1, x2,y2,  u1,v1, u2,v2, XY#[2])
+Function intersection#(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2])
 
 	Local tXY_1#[2]
 	Local tXY_2#[2]
 	Local tXY_3#[2]
 	
-	translateXY(x2,y2, x1,y1, tXY_1)
+	translateXY(x2,y2, x1,y1, tXY_1) ;translate all points so that (x1,y1) = (0,0)
 	translateXY(u1,v1, x1,y1, tXY_2)
 	translateXY(u2,v2, x1,y1, tXY_3)
 	
-	ang# = ATan2(tXY_1[2],tXY_1[1])
+	ang# = ATan2(tXY_1[2],tXY_1[1]) ;calculate angle to (x2,y2)
 	
-	tU1# = u1*Cos(ang) - v1*Sin(ang)
-	tV1# = u1*Sin(ang) + v1*Cos(ang)
+	tU1# = tXY_2[1]*Cos(-ang) - tXY_2[2]*Sin(-ang) ;rotate (u1,v1) by -ang
+	tV1# = tXY_2[1]*Sin(-ang) + tXY_2[2]*Cos(-ang)
 	
-	tU2# = u2*Cos(ang) - v2*Sin(ang)
-	tV2# = u2*Sin(ang) + v2*Cos(ang)
+	tU2# = tXY_3[1]*Cos(-ang) - tXY_3[2]*Sin(-ang) ;rotate (u2,v2) by -ang
+	tV2# = tXY_3[1]*Sin(-ang) + tXY_3[2]*Cos(-ang)
 	
-	k# = (tU1*tV2 - tU2*tV1)/(tV2-tV1)
+	denom# = (tV1*Sqr(1+tU2^2+tV2^2) - tV2*Sqr(1+tU1^2+tV1^2))^2 - (tU1*tV2 - tU2*tV1)^2
+	k# = (tU1*tV2 - tU2*tV1) * Sqr(1/denom)
 	
 	;intersection point is at (k,0)
 	
-	kX# = k*Cos(-ang)
-	kY# = k*Sin(-ang)
+	kX# = k*Cos(ang) ;rotate solution by ang
+	kY# = k*Sin(ang)
 	
-	translateXY(kX,kY, -x1,-y1, XY)
+	translateXY(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
+
+;	txy1# = Sqr(1+x1*x1+y1*y1)
+;	txy2# = Sqr(1+x2*x2+y2*y2)
+;	
+;	tuv1# = Sqr(1+u1*u1+v1*v1)
+;	tuv2# = Sqr(1+u2*u2+v2*v2)
+;
+;	a = -x1*txy2 + x2*txy1
+;	b = -y1*txy2 + y1*txy2
+;	
+;	c = -u1*tuv2 + u2*tuv1
+;	d = -v1*tuv2 + v1*tuv2
+	
+	
 	
 	Return
 
