@@ -22,45 +22,24 @@ End Type
 Type camera
 	Field id
 	Field x#, y#
-	Field u#, v#
-	Field du#, dv#
+	Field orient#
 	Field snap.point
+	
+	;virtual camera stuff
+	Field vx#, vy#
+	Field vorient#
+	Field xparity
+End Type
+
+Type boundary
+	Field x1#,y1#
+	Field x2#,y2#
 End Type
 
 n = 3
 k = 7
 
-construct = 0
-
-If construct = 1
-	p1.point = createPoint(-1,1)
-	p2.point = createPoint(1,-1)
-	p1\numLinks = 1
-	p1\links[1] = p2
-Else
-	init(n,k)
-EndIf
-
-mp1.point = createPoint(-1,-2, 255,0,0)
-mp1\mouseControlled = 1
-mp2.point = createPoint(1,1, 0,0,255)
-mp2\mouseControlled = 2
-mp1\numLinks = 1
-mp1\links[1] = mp2
-	
-If construct = 1	
-	solutionX# = 1.5
-	solutionY# = 0.5
-	
-	translatePoint(p1, -solutionX,-solutionY)
-	translatePoint(p2, -solutionX,-solutionY)
-	translatePoint(mp1, -solutionX,-solutionY)
-	translatePoint(mp2, -solutionX,-solutionY)
-	
-	cam.camera = New camera
-EndIf
-
-
+init(n,k)
 draw(R)
 
 SetBuffer(BackBuffer())
@@ -217,6 +196,8 @@ End Function
 
 Function getInput(R)
 
+	active = 0
+
 	mx = MouseX()
 	my = MouseY()
 	mkey = 0
@@ -248,7 +229,7 @@ Function getInput(R)
 		EndIf
 		cam\x = cam\snap\x
 		cam\y = cam\snap\y
-		Return 1
+		active = 1
 	ElseIf KeyHit(50)
 		If cam\snap = Last point
 			cam\snap = First point
@@ -257,15 +238,23 @@ Function getInput(R)
 		EndIf
 		cam\x = cam\snap\x
 		cam\y = cam\snap\y
-		Return 1
+		active = 1
+	EndIf
+	
+	If KeyDown(16)
+		cam\orient = (cam\orient + 5) Mod 360
+		active = 1
+	ElseIf KeyDown(18)
+		cam\orient = (cam\orient - 5 + 360) Mod 360
+		active = 1
 	EndIf
 	
 	If tx <> 0 Or ty <> 0
 
 		d# = Sqr(tx*tx + ty*ty)
 		ang# = ATan2(ty,tx)
-		cam\x = offsetStep(cam\x,cam\y, d,ang, 1)
-		cam\y = offsetStep(cam\x,cam\y, d,ang, 2)
+		cam\x = offsetStep(cam\x,cam\y, d,ang+cam\orient, 1)
+		cam\y = offsetStep(cam\x,cam\y, d,ang+cam\orient, 2)
 		
 ;		Local newXY#[2]
 ;		translate(cam\x,cam\y, -offX,-offY, newXY)
@@ -273,7 +262,7 @@ Function getInput(R)
 ;		cam\x = newXY[1]
 ;		cam\y = newXY[2]
 		
-		Return 1
+		active = 1
 	EndIf
 	
 	mouseMoving = (MouseXSpeed() Or MouseYSpeed())
@@ -305,12 +294,12 @@ Function getInput(R)
 		
 		;DebugLog tXY[1]+", "+tXY[2]
 		
-		Return 1
+		active = 1
 	EndIf
 	
 	;If MouseXSpeed() Or MouseYSpeed() Return 1
 	
-	Return 0
+	Return active
 	
 End Function
 
@@ -330,8 +319,11 @@ Function draw(R)
 		Local tXY#[2]
 		translate(p\x,p\y, cam\x,cam\y, tXY)
 		
-		p\tu# = -transform(tXY[1],tXY[2], 1)
-		p\tv# = transform(tXY[1],tXY[2], 2)
+		tu# = -transform(tXY[1],tXY[2], 1)
+		tv# = transform(tXY[1],tXY[2], 2)
+		
+		p\tu = tu*Cos(cam\orient) - tv*Sin(cam\orient)
+		p\tv = tu*Sin(cam\orient) + tv*Cos(cam\orient)
 		
 		If p\mouseControlled
 			Color p\r,p\g,p\b
@@ -340,22 +332,6 @@ Function draw(R)
 	Next
 	
 	Local vals#[3]
-	
-;	Return
-
-	mp1.point = Null
-	mp2.point = Null
-	
-	For p.point = Each point
-;		DebugLog p\mouseControlled
-		If p\mouseControlled = 1
-			mp1 = p
-		ElseIf p\mouseControlled = 2
-			mp2 = p
-		EndIf
-	Next
-	
-	intNum = 0
 	
 	For p1.point = Each point
 		For idx = 1 To p1\numlinks
@@ -368,7 +344,7 @@ Function draw(R)
 			
 			denom# = u1*v2-u2*v1
 			
-			If KeyHit(57) And Abs(p1\x) < 0.1 And Abs(p1\y) = 0.1; And idx = 4
+			If KeyHit(57) And Abs(p1\x) < 0.1 And Abs(p1\y) = 0.1
 				Stop
 			EndIf
 			
@@ -432,118 +408,14 @@ Function draw(R)
 			EndIf
 			;end of line drawing
 			
-			;put a dot on intersections
-			If p1 <> mp1 And p1 <> mp2
-				Local iXY#[2]
-				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
-				
-				If iXY[0] = 1
-					ip.interPoint = New interPoint
-					ip\x = -iXY[1]
-					ip\y = iXY[2]
-					ip\p1x = p1\x
-					ip\p1y = p1\y
-					ip\p2x = p2\x
-					ip\p2y = p2\y
-					
-					
-					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
-					
-					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
-					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
-					intNum = intNum + 1
-					
-					Color 0,255,0
-					circ(intX,intY, 2,1)
-					Text intX,intY, intNum
-					
-					;all variables reused
-					flipOverLine(mp2\x,mp2\y, p1\x,p1\y, p2\x,p2\y, iXY)
-					translate(iXY[1],iXY[2], cam\x,cam\y, iXY)
-					
-					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
-					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
-					
-					Color 0,255,255
-					circ(intX,intY, 2,1)
-					Text intX,intY, intNum
-					
-					;flipOverLine(rXY[1],rXY[2], p1\x,p1\y, p2\x,p2\y, rXY)
-				EndIf
-			EndIf
-			
 		Next
 
 	Next
-	
-	
-	Local rXY#[2]
-	rXY[1] = mp2\x
-	rXY[2] = mp2\y
-	
-	Local dXY#[2]
-		
-	DebugLog "---"
-	
-	While intNum > 0
-		min# = 0
-		ip = Null
-		
-		For ip2.interPoint = Each interPoint
-			d# = hyperD(mp1\x,mp1\y, ip2\x,ip2\y)
-			DebugLog d
-			
-			If d >= min
-				min = d
-				ip = ip2
-			EndIf
-		Next
-		DebugLog ""
-		
-		translate(ip\x,ip\y, cam\x,cam\y, dXY)
-		
-		dX# = transform(-dXY[1],dXY[2],1)*R + gw/2
-		dY# = transform(-dXY[1],dXY[2],2)*R + gh/2
-		
-		Color 255,255,255
-		;circ(dX,dY, 1,1)
-		Text dX-8,dY-12, intNum
-		
-		flipOverLine(rXY[1],rXY[2], ip\p1x,ip\p1y, ip\p2x,ip\p2y, rXY)
-		Delete ip
-		
-		translate(rXY[1],rXY[2], cam\x,cam\y, dXY)
-		
-		dX# = transform(-dXY[1],dXY[2],1)*R + gw/2
-		dY# = transform(-dXY[1],dXY[2],2)*R + gh/2
-		
-		Color 255,255,0
-		circ(dX,dY, 1,1)
-		Text dX,dY, intNum
-		
-;		Stop
-		
-		intNum = intNum - 1
-	
-	Wend
-	
-	translate(rXY[1],rXY[2], cam\x,cam\y, rXY)
-	
-	rX# = transform(-rXY[1],rXY[2],1)*R + gw/2
-	rY# = transform(-rXY[1],rXY[2],2)*R + gh/2
-	
-	Color 255,0,255
-	circ(rX,rY, 2,1)
-	
+
+
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
 	Line gw/2,gh/2-2, gw/2,gh/2+2
-	
-	Color 128,128,0
-	cx = R*cam\u+gw/2
-	cy = R*cam\v+gh/2
-	Line cx-2,cy, cx+2,cy
-	Line cx,cy-2, cx,cy+2
 
 End Function
 
