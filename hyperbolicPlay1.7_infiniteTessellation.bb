@@ -12,6 +12,7 @@ Type point
 	Field numlinks
 	Field mouseControlled
 	Field show
+	Field toDelete
 End Type
 
 Type interPoint
@@ -25,11 +26,11 @@ Type camera
 	Field x#, y#
 	Field orient#
 	Field snap.point
+	Field xparity
 	
-	;virtual camera stuff
+	;virtual camera that ignores boundaries
 	Field vx#, vy#
 	Field vorient#
-	Field xparity
 End Type
 
 Type boundary
@@ -185,7 +186,7 @@ Function init(n,k)
 	
 End Function
 
-Function createPoint.point(x#,y#, r=255,g=255,b=255, show=0)
+Function createPoint.point(x#,y#, r=255,g=255,b=255, show=0, toDelete=0)
 
 	p.point = New point
 	p\x = x
@@ -202,6 +203,7 @@ Function createPoint.point(x#,y#, r=255,g=255,b=255, show=0)
 	p\b = b
 	
 	p\show = show
+	p\toDelete = toDelete
 	
 	Return p
 
@@ -218,7 +220,7 @@ Function getInput(R)
 	tx# = 0
 	ty# = 0
 	scrollSpeed# = 0.10
-	k# = (Exp(scrollSpeed)+1/Exp(scrollSpeed))/2 ;cosh(scrollSpeed)
+	k# = cosh(scrollSpeed)
 	
 	If KeyDown(32) Or KeyDown(205)
 		tx = -scrollSpeed
@@ -233,32 +235,34 @@ Function getInput(R)
 		
 	cam.camera = First camera
 	
-	If KeyHit(49)
-		;Stop
-		If cam\snap = First point
-			cam\snap = Last point
-		Else
-			cam\snap = Before cam\snap
-		EndIf
-		cam\x = cam\snap\x
-		cam\y = cam\snap\y
-		active = 1
-	ElseIf KeyHit(50)
-		If cam\snap = Last point
-			cam\snap = First point
-		Else
-			cam\snap = After cam\snap
-		EndIf
-		cam\x = cam\snap\x
-		cam\y = cam\snap\y
-		active = 1
-	EndIf
+;	If KeyHit(49)
+;		;Stop
+;		If cam\snap = First point
+;			cam\snap = Last point
+;		Else
+;			cam\snap = Before cam\snap
+;		EndIf
+;		cam\x = cam\snap\x
+;		cam\y = cam\snap\y
+;		active = 1
+;	ElseIf KeyHit(50)
+;		If cam\snap = Last point
+;			cam\snap = First point
+;		Else
+;			cam\snap = After cam\snap
+;		EndIf
+;		cam\x = cam\snap\x
+;		cam\y = cam\snap\y
+;		active = 1
+;	EndIf
 	
 	If KeyDown(16)
 		cam\orient = (cam\orient + 5) Mod 360
+		cam\vorient = (cam\vorient + 5) Mod 360
 		active = 1
 	ElseIf KeyDown(18)
 		cam\orient = (cam\orient - 5 + 360) Mod 360
+		cam\vorient = (cam\vorient - 5 + 360) Mod 360
 		active = 1
 	EndIf
 	
@@ -266,8 +270,93 @@ Function getInput(R)
 
 		d# = Sqr(tx*tx + ty*ty)
 		ang# = ATan2(ty,tx)
-		cam\x = offsetStep(cam\x,cam\y, d,ang+cam\orient, 1)
-		cam\y = offsetStep(cam\x,cam\y, d,ang+cam\orient, 2)
+		
+		cam\vx = offsetStep(cam\vx,cam\vy, d,ang+cam\vorient, 1)
+		cam\vy = offsetStep(cam\vx,cam\vy, d,ang+cam\vorient, 2)
+		
+		nx# = offsetStep(cam\x,cam\y, d,ang+cam\orient, 1)
+		ny# = offsetStep(cam\x,cam\y, d,ang+cam\orient, 2)
+		
+		Local out#[2]
+		tempx# = 0
+		tempy# = 0
+		intX# = 0
+		intY# = 0
+		
+		done = 0
+		crossed.boundary = Null
+		pick.boundary = Null
+		
+		iters = 0
+		
+		;DebugLog "cam\x = "+cam\x+", cam\y = "+cam\y
+		;DebugLog "nx = "+nx+", ny = "+ny
+		
+		While Not done
+			done = 1
+			max# = 10000
+			pick = Null
+			
+			DebugLog iters
+			
+			For b.boundary = Each boundary
+				If b <> crossed
+					intersection(b\x1,b\y1, b\x2,b\y2, cam\x,cam\y, nx,ny, out)
+					
+					If out[0] = 1 ;there was an intersection
+						;out[1] = -out[1]
+						createPoint(out[1],out[2], 0,255,255, 1,1)
+						
+						done = 0
+						d# = hyperD(out[1],out[2], cam\x,cam\y)
+						DebugLog "d = "+d
+						If d < max
+							max = d
+							pick = b
+							DebugLog "pick: "+Str(pick)
+						EndIf
+					EndIf
+				EndIf
+			Next
+			
+			If Not done
+				intersection(pick\x1,pick\y1, pick\x2,pick\y2, cam\x,cam\y, nx,ny, out)
+				;out[1] = -out[1]
+				createPoint(out[1],out[2], 0,255,0, 1,1)
+				iters = iters + 1
+				
+				DebugLog " (intersection) out[1] = "+out[1]+", out[2] = "+out[2]
+				
+				cam\x = out[1]
+				cam\y = out[2]
+				
+				flipOverLine(nx,ny, pick\x1,pick\y1, pick\x2,pick\y2, out)
+				createPoint(out[1],out[2], 255,255,0, 1,1)
+				
+				DebugLog " (reflection)   out[1] = "+out[1]+", out[2] = "+out[2]
+				
+				nx = out[1]
+				ny = out[2]
+				
+				crossed = pick
+				
+				DebugLog ""
+				
+				If iters > 2
+					DebugLog "Wah!"
+					DebugLog ""
+					Exit
+				EndIf
+			EndIf
+
+		Wend
+		
+		If iters > 0
+			FlushKeys
+		EndIf
+		
+		cam\x = nx
+		cam\y = ny
 		
 ;		Local newXY#[2]
 ;		translate(cam\x,cam\y, -offX,-offY, newXY)
@@ -278,37 +367,37 @@ Function getInput(R)
 		active = 1
 	EndIf
 	
-	mouseMoving = (MouseXSpeed() Or MouseYSpeed())
-	
-	mbutton = 0
-	If (MouseDown(1) And mouseMoving) Or MouseHit(1)
-		mbutton = 1
-	ElseIf (MouseDown(2) And mouseMoving) Or MouseHit(2)
-		mbutton = 2
-	EndIf
-	
-	If mbutton > 0
-		u1# = (mx-GraphicsWidth()/2.)/R
-		v1# = (my-GraphicsHeight()/2.)/R
-		
-		x1# = invTransform(u1,v1,1)
-		y1# = invTransform(u1,v1,2)
-		
-		Local tXY#[2]
-		translate(-x1,y1, -cam\x,-cam\y, tXY)
-		
-		p.point = Last point
-		While p <> First point And p\mouseControlled <> mbutton
-			p = Before p
-		Wend
-		
-		p\x = tXY[1]
-		p\y = tXY[2]
-		
-		;DebugLog tXY[1]+", "+tXY[2]
-		
-		active = 1
-	EndIf
+;	mouseMoving = (MouseXSpeed() Or MouseYSpeed())
+;	
+;	mbutton = 0
+;	If (MouseDown(1) And mouseMoving) Or MouseHit(1)
+;		mbutton = 1
+;	ElseIf (MouseDown(2) And mouseMoving) Or MouseHit(2)
+;		mbutton = 2
+;	EndIf
+;	
+;	If mbutton > 0
+;		u1# = (mx-GraphicsWidth()/2.)/R
+;		v1# = (my-GraphicsHeight()/2.)/R
+;		
+;		x1# = invTransform(u1,v1,1)
+;		y1# = invTransform(u1,v1,2)
+;		
+;		Local tXY#[2]
+;		translate(-x1,y1, -cam\x,-cam\y, tXY)
+;		
+;		p.point = Last point
+;		While p <> First point And p\mouseControlled <> mbutton
+;			p = Before p
+;		Wend
+;		
+;		p\x = tXY[1]
+;		p\y = tXY[2]
+;		
+;		;DebugLog tXY[1]+", "+tXY[2]
+;		
+;		active = 1
+;	EndIf
 	
 	;If MouseXSpeed() Or MouseYSpeed() Return 1
 	
@@ -341,6 +430,9 @@ Function draw(R)
 		If p\show
 			Color p\r,p\g,p\b
 			circ(R*p\tu+gw/2,R*p\tv+gh/2, 3, 1)
+		EndIf
+		If p\toDelete
+			Delete p
 		EndIf
 	Next
 	
@@ -424,26 +516,24 @@ Function draw(R)
 		Next
 
 	Next
-	
-;	Color 255,0,0
-;	For b.boundary = Each boundary
-;		Local T1#[2]
-;		Local T2#[2]
-;		
-;		T1[1] = b\x1
-;		T1[2] = b\y1
-;		T2[1] = b\x2
-;		T2[2] = b\y2
-;		
-;		
-;		
-;		Line b\x1,b\y1, b\x2,b\y2
-;	Next
-
 
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
 	Line gw/2,gh/2-2, gw/2,gh/2+2
+
+End Function
+
+Function plotCoords(x#,y#, r=255,g=255,b=255, rad=300)
+	cam.camera = First camera
+
+	Local out#[2]
+	translate(x,y, -cam\x,-cam\y, out)
+	
+	nx# = transform(out[1],out[2],1)*rad + GraphicsWidth()/2
+	ny# = transform(out[1],out[2],2)*rad + GraphicsHeight()/2
+	
+	Color r,g,b
+	circ(nx,ny, 2,1)
 
 End Function
 
@@ -834,7 +924,7 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, deb
 	
 	translate(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
 	
-	XY[1] = -XY[1] ;I don't really know WHY
+;	XY[1] = -XY[1] ;I don't really know WHY
 	
 	If debug = 1
 		DebugLog "Final solution:"
