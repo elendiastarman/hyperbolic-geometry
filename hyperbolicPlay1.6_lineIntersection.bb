@@ -93,7 +93,7 @@ Function init(n,k)
 ;	rad# = 2*dis^2*(1-Cos(phi)) + dis^4*(1-Cos(phi))^2
 	rad# = dis*(Sqr(1+dis^2)*(1-Cos(phi))*Cos(theta/2) + Sin(phi)*Sin(theta/2))
 
-	distanceLimit = 1^2
+	distanceLimit = 5^2
 	limit = 1000
 	tolerance# = 0.1
 	
@@ -132,7 +132,7 @@ Function init(n,k)
 			x2# = rad*Cos(ang)
 			y2# = rad*Sin(ang)
 			
-			translateXY(x2,y2, -center\x,-center\y, nXY)
+			translate(x2,y2, -center\x,-center\y, nXY)
 			
 			;Cls
 			;Color 255,0,0
@@ -141,7 +141,7 @@ Function init(n,k)
 			;x3# = rad*Cos(angoff)
 			;y3# = rad*Sin(angoff)
 			;Local nXY2#[2]
-			;translateXY(x3,y3, -center\x,-center\y, nXY2)
+			;translate(x3,y3, -center\x,-center\y, nXY2)
 			;Color 0,0,255
 			;circ(-transform(nXY2[1],nXY2[2],1)*R+GraphicsWidth()/2,transform(nXY2[1],nXY2[2],2)*R+GraphicsWidth()/2, 7,0)
 			
@@ -164,7 +164,7 @@ Function init(n,k)
 				np\links[1] = center
 				
 				Local offXY#[2]
-				translateXY(center\x,center\y, np\x,np\y, offXY)
+				translate(center\x,center\y, np\x,np\y, offXY)
 				
 				q = q+1
 				queue[q] = np
@@ -260,7 +260,7 @@ Function getInput(R)
 		cam\y = offsetStep(cam\x,cam\y, d,ang, 2)
 		
 ;		Local newXY#[2]
-;		translateXY(cam\x,cam\y, -offX,-offY, newXY)
+;		translate(cam\x,cam\y, -offX,-offY, newXY)
 		
 ;		cam\x = newXY[1]
 ;		cam\y = newXY[2]
@@ -283,14 +283,14 @@ Function getInput(R)
 		y1# = invTransform(u1,v1,2)
 		
 		Local tXY#[2]
-		translateXY(x1,y1, cam\x,cam\y, tXY)
+		translate(-x1,y1, -cam\x,-cam\y, tXY)
 		
 		p.point = Last point
 		While p <> First point And p\mouseControlled <> mbutton
 			p = Before p
 		Wend
 		
-		p\x = -tXY[1]
+		p\x = tXY[1]
 		p\y = tXY[2]
 		
 		;DebugLog tXY[1]+", "+tXY[2]
@@ -318,7 +318,7 @@ Function draw(R)
 		If KeyHit(57) Stop
 		
 		Local tXY#[2]
-		translateXY(p\x,p\y, cam\x,cam\y, tXY)
+		translate(p\x,p\y, cam\x,cam\y, tXY)
 		
 		p\tu# = -transform(tXY[1],tXY[2], 1)
 		p\tv# = transform(tXY[1],tXY[2], 2)
@@ -428,7 +428,7 @@ Function draw(R)
 				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
 				
 				If iXY[0] = 1
-					translateXY(-iXY[1],iXY[2], cam\x,cam\y, iXY)
+					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
 					
 					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
 					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
@@ -490,7 +490,7 @@ Function offsetStep#(px#,py#, d#,theta#, which)
 
 End Function
 
-Function translate#(pu#,pv#, tu#,tv#, which) ;(pu,pv) = point to translate, (tu,tv) = point to move to origin
+Function translateUV#(pu#,pv#, tu#,tv#, which) ;(pu,pv) = point to translate, (tu,tv) = point to move to origin
 
 		vdotx# = pu*tu + pv*tv ;tu*p\u + tv*p\v
 		mag2v# = tu*tu + tv*tv ;tu*tu + tv*tv
@@ -504,7 +504,7 @@ Function translate#(pu#,pv#, tu#,tv#, which) ;(pu,pv) = point to translate, (tu,
 
 End Function
 
-Function translateXY#(px#,py#, tx#,ty#, out#[2]) ;tx,ty to origin
+Function translate#(px#,py#, tx#,ty#, out#[2]) ;tx,ty to origin
 
 	pt# = Sqr(1+px*px+py*py)
 	tt# = Sqr(1+tx*tx+ty*ty)
@@ -548,7 +548,7 @@ End Function
 
 Function translatePoint(p.point, tx#,ty#)
 	Local out#[2]
-	translateXY(p\x,p\y, tx,ty, out)
+	translate(p\x,p\y, tx,ty, out)
 	p\x = out[1]
 	p\y = out[2]
 End Function
@@ -604,7 +604,7 @@ Function polygon(centerX#,centerY#, dis#, sides, angoffset#)
 		tempy# = rad*Sin(i*angstep + angoffset)
 		
 		Local newXY#[2]
-		translateXY(tempx,tempy, -centerX,-centerY, newXY)
+		translate(tempx,tempy, -centerX,-centerY, newXY)
 		
 		p\x = newXY[1]
 		p\y = newXY[2]
@@ -656,7 +656,7 @@ Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, dis#, sides)
 ;	centerV# = transform(centerX,centerY, 2)
 
 	Local orientT_XY#[2]
-	translateXY(orientX,orientY, -centerX,-centerY, orientT_XY)
+	translate(orientX,orientY, -centerX,-centerY, orientT_XY)
 	
 	angoffset# = (ATan2(orientT_XY[2], orientT_XY[1]) + 180*((sides+0) Mod 2)) Mod 360
 
@@ -669,7 +669,7 @@ Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, dis#, sides)
 		tempy# = rad*Sin(i*angstep + angoffset)
 		
 		Local newXY#[2]
-		translateXY(tempx,tempy, -centerX,-centerY, newXY)
+		translate(tempx,tempy, -centerX,-centerY, newXY)
 		
 		p\x = newXY[1]
 		p\y = newXY[2]
@@ -725,14 +725,14 @@ Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 		tempx# = offsetStep(0,0, rad, i*angstep + angoffset, 1)
 		tempy# = offsetStep(0,0, rad, i*angstep + angoffset, 2)
 		
-;		p\x = tempx ;translate(tempx,tempy, -centerX,-centerY, 1)
-;		p\y = tempy ;translate(tempx,tempy, -centerX,-centerY, 2)
+;		p\x = tempx ;translateUV(tempx,tempy, -centerX,-centerY, 1)
+;		p\y = tempy ;translateUV(tempx,tempy, -centerX,-centerY, 2)
 		
 		tempu# = transform(tempx,tempy, 1)
 		tempv# = transform(tempx,tempy, 2)
 		
-		p\u = translate(tempu,tempv, centerU,centerV, 1)
-		p\v = translate(tempu,tempv, centerU,centerV, 2)
+		p\u = translateUV(tempu,tempv, centerU,centerV, 1)
+		p\v = translateUV(tempu,tempv, centerU,centerV, 2)
 		
 		p\x = invTransform(p\u,p\v, 1)
 		p\y = invTransform(p\u,p\v, 2)
@@ -788,9 +788,9 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, deb
 	Local tXY_2#[2]
 	Local tXY_3#[2]
 	
-	translateXY(x2,y2, x1,y1, tXY_1) ;translate all points so that (x1,y1) = (0,0)
-	translateXY(u1,v1, x1,y1, tXY_2)
-	translateXY(u2,v2, x1,y1, tXY_3)
+	translate(x2,y2, x1,y1, tXY_1) ;translate all points so that (x1,y1) = (0,0)
+	translate(u1,v1, x1,y1, tXY_2)
+	translate(u2,v2, x1,y1, tXY_3)
 	
 	If debug = 1
 		DebugLog "Translated coordinates:"
@@ -841,7 +841,7 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, deb
 	kX# = k*Cos(ang) ;rotate solution by ang
 	kY# = k*Sin(ang)
 	
-	translateXY(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
+	translate(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
 	
 	XY[1] = -XY[1] ;I don't really know WHY
 	
@@ -866,16 +866,16 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, deb
 	If debug = 1
 		DebugLog "Sanity check:"
 		
-		translateXY(x1,y1, XY[1],XY[2], tXY_1)
-		translateXY(x2,y2, XY[1],XY[2], tXY_2)
+		translate(x1,y1, XY[1],XY[2], tXY_1)
+		translate(x2,y2, XY[1],XY[2], tXY_2)
 		
 		DebugLog " First pair:"
 		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
 		DebugLog "  tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
 		DebugLog "  tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1] = "+(tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1])
 		
-		translateXY(u1,v1, XY[1],XY[2], tXY_1)
-		translateXY(u2,v2, XY[1],XY[2], tXY_2)
+		translate(u1,v1, XY[1],XY[2], tXY_1)
+		translate(u2,v2, XY[1],XY[2], tXY_2)
 		
 		DebugLog " Second pair:"
 		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
