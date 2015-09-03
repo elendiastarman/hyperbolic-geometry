@@ -11,6 +11,7 @@ Type point
 	Field links.point[100]
 	Field numlinks
 	Field mouseControlled
+	Field show
 End Type
 
 Type interPoint
@@ -121,17 +122,6 @@ Function init(n,k)
 			
 			translate(x2,y2, -center\x,-center\y, nXY)
 			
-			;Cls
-			;Color 255,0,0
-			;circ(-transform(nXY[1],nXY[2],1)*R+GraphicsWidth()/2,transform(nXY[1],nXY[2],2)*R+GraphicsWidth()/2, 5,0)
-			
-			;x3# = rad*Cos(angoff)
-			;y3# = rad*Sin(angoff)
-			;Local nXY2#[2]
-			;translate(x3,y3, -center\x,-center\y, nXY2)
-			;Color 0,0,255
-			;circ(-transform(nXY2[1],nXY2[2],1)*R+GraphicsWidth()/2,transform(nXY2[1],nXY2[2],2)*R+GraphicsWidth()/2, 7,0)
-			
 			coincide = 0
 			For k = 1 To q
 				If KeyHit(1) End
@@ -172,9 +162,30 @@ Function init(n,k)
 		Next
 	Wend
 	
+	
+	Local bounds.point[100]
+	
+	;create boundary lines
+	For i = 0 To n-1
+		;createPoint(dis*Cos(90+b*theta),dis*Sin(90+b*theta), 255,0,0, 1)
+		b.boundary = New boundary
+		b\x1 = dis*Cos(90+i*theta)
+		b\y1 = dis*Sin(90+i*theta)
+		b\x2 = dis*Cos(90+(i+1)*theta)
+		b\y2 = dis*Sin(90+(i+1)*theta)
+		
+		bounds[i+1] = createPoint(b\x1,b\y1, 255,0,0, 1)
+		bounds[i+1]\numLinks = 1
+		
+		If i > 0
+			bounds[i+1]\links[1] = bounds[i]
+		EndIf
+	Next
+	bounds[1]\links[1] = bounds[n]
+	
 End Function
 
-Function createPoint.point(x#,y#, r=255,g=255,b=255)
+Function createPoint.point(x#,y#, r=255,g=255,b=255, show=0)
 
 	p.point = New point
 	p\x = x
@@ -189,6 +200,8 @@ Function createPoint.point(x#,y#, r=255,g=255,b=255)
 	p\r = r
 	p\g = g
 	p\b = b
+	
+	p\show = show
 	
 	Return p
 
@@ -325,7 +338,7 @@ Function draw(R)
 		p\tu = tu*Cos(cam\orient) - tv*Sin(cam\orient)
 		p\tv = tu*Sin(cam\orient) + tv*Cos(cam\orient)
 		
-		If p\mouseControlled
+		If p\show
 			Color p\r,p\g,p\b
 			circ(R*p\tu+gw/2,R*p\tv+gh/2, 3, 1)
 		EndIf
@@ -411,6 +424,21 @@ Function draw(R)
 		Next
 
 	Next
+	
+;	Color 255,0,0
+;	For b.boundary = Each boundary
+;		Local T1#[2]
+;		Local T2#[2]
+;		
+;		T1[1] = b\x1
+;		T1[2] = b\y1
+;		T2[1] = b\x2
+;		T2[2] = b\y2
+;		
+;		
+;		
+;		Line b\x1,b\y1, b\x2,b\y2
+;	Next
 
 
 	Color 255,255,0
