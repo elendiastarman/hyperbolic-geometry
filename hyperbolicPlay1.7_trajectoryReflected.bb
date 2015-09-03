@@ -13,6 +13,12 @@ Type point
 	Field mouseControlled
 End Type
 
+Type interPoint
+	Field x#, y#
+	Field p1.point
+	Field p2.point
+End Type
+
 Type camera
 	Field id
 	Field x#, y#
@@ -350,6 +356,9 @@ Function draw(R)
 	Next
 	
 	intNum = 0
+	Local rXY#[2]
+	rXY[1] = mp2\x
+	rXY[2] = mp2\y
 	
 	For p1.point = Each point
 		For idx = 1 To p1\numlinks
@@ -432,6 +441,13 @@ Function draw(R)
 				intersection(p1\x,p1\y, p2\x,p2\y,  mp1\x,mp1\y, mp2\x,mp2\y, iXY, 1)
 				
 				If iXY[0] = 1
+					ip.interPoint = New interPoint
+					ip\x = iXY[1]
+					ip\y = iXY[2]
+					ip\p1 = p1
+					ip\p2 = p2
+					
+					
 					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
 					
 					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
@@ -444,20 +460,24 @@ Function draw(R)
 					
 					;all variables reused
 					flipOverLine(mp2\x,mp2\y, p1\x,p1\y, p2\x,p2\y, iXY)
-					translate(iXY[1],iXY[2], cam\x,cam\y, iXY)
+					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
 					
-					intX# = transform(iXY[1],iXY[2],1)*R + gw/2
-					intY# = transform(iXY[1],iXY[2],2)*R + gh/2
+					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
+					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
 					
 					Color 0,255,255
 					circ(intX,intY, 2,1)
 					Text intX,intY, intNum
+					
+					;flipOverLine(rXY[1],rXY[2], p1\x,p1\y, p2\x,p2\y, rXY)
 				EndIf
 			EndIf
 			
 		Next
 
 	Next
+	
+	
 	
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
