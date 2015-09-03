@@ -15,8 +15,8 @@ End Type
 
 Type interPoint
 	Field x#, y#
-	Field p1.point
-	Field p2.point
+	Field p1x#, p1y#
+	Field p2x#, p2y#
 End Type
 
 Type camera
@@ -41,7 +41,7 @@ Else
 	init(n,k)
 EndIf
 
-mp1.point = createPoint(-1,-1, 255,0,0)
+mp1.point = createPoint(-1,-2, 255,0,0)
 mp1\mouseControlled = 1
 mp2.point = createPoint(1,1, 0,0,255)
 mp2\mouseControlled = 2
@@ -356,9 +356,6 @@ Function draw(R)
 	Next
 	
 	intNum = 0
-	Local rXY#[2]
-	rXY[1] = mp2\x
-	rXY[2] = mp2\y
 	
 	For p1.point = Each point
 		For idx = 1 To p1\numlinks
@@ -442,10 +439,12 @@ Function draw(R)
 				
 				If iXY[0] = 1
 					ip.interPoint = New interPoint
-					ip\x = iXY[1]
+					ip\x = -iXY[1]
 					ip\y = iXY[2]
-					ip\p1 = p1
-					ip\p2 = p2
+					ip\p1x = p1\x
+					ip\p1y = p1\y
+					ip\p2x = p2\x
+					ip\p2y = p2\y
 					
 					
 					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
@@ -460,7 +459,7 @@ Function draw(R)
 					
 					;all variables reused
 					flipOverLine(mp2\x,mp2\y, p1\x,p1\y, p2\x,p2\y, iXY)
-					translate(-iXY[1],iXY[2], cam\x,cam\y, iXY)
+					translate(iXY[1],iXY[2], cam\x,cam\y, iXY)
 					
 					intX# = transform(-iXY[1],iXY[2],1)*R + gw/2
 					intY# = transform(-iXY[1],iXY[2],2)*R + gh/2
@@ -478,6 +477,63 @@ Function draw(R)
 	Next
 	
 	
+	Local rXY#[2]
+	rXY[1] = mp2\x
+	rXY[2] = mp2\y
+	
+	Local dXY#[2]
+		
+	DebugLog "---"
+	
+	While intNum > 0
+		min# = 0
+		ip = Null
+		
+		For ip2.interPoint = Each interPoint
+			d# = hyperD(mp1\x,mp1\y, ip2\x,ip2\y)
+			DebugLog d
+			
+			If d >= min
+				min = d
+				ip = ip2
+			EndIf
+		Next
+		DebugLog ""
+		
+		translate(ip\x,ip\y, cam\x,cam\y, dXY)
+		
+		dX# = transform(-dXY[1],dXY[2],1)*R + gw/2
+		dY# = transform(-dXY[1],dXY[2],2)*R + gh/2
+		
+		Color 255,255,255
+		;circ(dX,dY, 1,1)
+		Text dX-8,dY-12, intNum
+		
+		flipOverLine(rXY[1],rXY[2], ip\p1x,ip\p1y, ip\p2x,ip\p2y, rXY)
+		Delete ip
+		
+		translate(rXY[1],rXY[2], cam\x,cam\y, dXY)
+		
+		dX# = transform(-dXY[1],dXY[2],1)*R + gw/2
+		dY# = transform(-dXY[1],dXY[2],2)*R + gh/2
+		
+		Color 255,255,0
+		circ(dX,dY, 1,1)
+		Text dX,dY, intNum
+		
+;		Stop
+		
+		intNum = intNum - 1
+	
+	Wend
+	
+	translate(rXY[1],rXY[2], cam\x,cam\y, rXY)
+	
+	rX# = transform(-rXY[1],rXY[2],1)*R + gw/2
+	rY# = transform(-rXY[1],rXY[2],2)*R + gh/2
+	
+	Color 255,0,255
+	circ(rX,rY, 2,1)
 	
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
@@ -956,12 +1012,19 @@ Function flipOverLine(px#,py#, x1#,y1#, x2#,y2#, out#[2])
 	
 	translate(nx,ny, -x1,-y1, out)
 	
-	out[1] = -out[1]
+	;out[1] = -out[1]
 
 End Function
 
-Function D#(x1,y1, x2,y2)
+Function D#(x1#,y1#, x2#,y2#)
 	Return Sqr((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1))
+End Function
+
+Function hyperD#(x1#,y1#, x2#,y2#)
+;	Local out#[2]
+;	translate(x2,y2, x1,y1, out)
+;	Return Sqr(out[1]*out[1] + out[2]*out[2])
+	Return Sqr( (1+x1*x1+y1*y1)*(1+x2*x2+y2*y2) ) - x1*x2 - y1*y2
 End Function
 
 Function circ(x,y,r, fill=0)
