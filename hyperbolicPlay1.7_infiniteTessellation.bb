@@ -26,7 +26,7 @@ Type camera
 	Field x#, y#
 	Field orient#
 	Field snap.point
-	Field xparity
+	Field yparity
 	
 	;virtual camera that ignores boundaries
 	Field vx#, vy#
@@ -38,8 +38,8 @@ Type boundary
 	Field x2#,y2#
 End Type
 
-n = 3
-k = 7
+n = 4
+k = 5
 
 init(n,k)
 draw(R)
@@ -82,7 +82,7 @@ Function init(n,k)
 ;	rad# = 2*dis^2*(1-Cos(phi)) + dis^4*(1-Cos(phi))^2
 	rad# = dis*(Sqr(1+dis^2)*(1-Cos(phi))*Cos(theta/2) + Sin(phi)*Sin(theta/2))
 
-	distanceLimit = 8^2
+	distanceLimit = 50^2
 	limit = 1000
 	tolerance# = 0.1
 	
@@ -166,23 +166,33 @@ Function init(n,k)
 	Wend
 	
 	
-	;Local bounds.point[100]
+	Local bounds.point[100]
 	
 	;create boundary lines
 	For i = 0 To n-1
 		;createPoint(dis*Cos(90+b*theta),dis*Sin(90+b*theta), 255,0,0, 1)
 		b.boundary = New boundary
-		b\x1 = dis*Cos(90+i*theta)
-		b\y1 = dis*Sin(90+i*theta)
-		b\x2 = dis*Cos(90+(i+1)*theta)
-		b\y2 = dis*Sin(90+(i+1)*theta)
+		b\x1 = dis*Cos(90+(i+0.5)*theta)
+		b\y1 = dis*Sin(90+(i+0.5)*theta)
+		b\x2 = dis*Cos(90+(i+1.5)*theta)
+		b\y2 = dis*Sin(90+(i+1.5)*theta)
 		
-		b1.point = createPoint(b\x1,b\y1, 255,0,0, 1)
-		b2.point = createPoint(b\x2,b\y2, 255,0,0, 1)
-		b1\numLinks = 1
-		b1\links[1] = b2
+		;b1.point = createPoint(b\x1,b\y1, 255,0,0, 1)
+		;b2.point = createPoint(b\x2,b\y2, 255,0,0, 1)
+		;b1\numLinks = 1
+		;b1\links[1] = b2
 		
-		;bounds[i+1] = createPoint(b\x1,b\y1, 255,0,0, 1)
+		If i = 0
+			r = 255: g=0: bl=0
+		ElseIf i = 1
+			r = 0: g=255: bl=0
+		ElseIf i = 2
+			r = 0: g=0: bl=255
+		Else
+			r = 255: g=0: bl=255
+		EndIf
+		
+		;bounds[i+1] = createPoint(b\x1,b\y1, r,g,bl, 1)
 		;bounds[i+1]\numLinks = 1
 		
 		;If i > 0
@@ -223,24 +233,26 @@ Function getInput(R)
 	mx = MouseX()
 	my = MouseY()
 	mkey = 0
+		
+	cam.camera = First camera
 	
 	tx# = 0
 	ty# = 0
 	scrollSpeed# = 0.10
 	k# = cosh(scrollSpeed)
 	
+	mult = -(2*cam\yparity - 1)
+	
 	If KeyDown(32) Or KeyDown(205)
-		tx = -scrollSpeed
+		tx = -scrollSpeed ;* mult
 	ElseIf KeyDown(30) Or KeyDown(203)
-		tx =  scrollSpeed
+		tx =  scrollSpeed ;* mult
 	EndIf
 	If KeyDown(17) Or KeyDown(200)
-		ty = -scrollSpeed
+		ty = -scrollSpeed * mult
 	ElseIf KeyDown(31) Or KeyDown(208)
-		ty =  scrollSpeed
+		ty =  scrollSpeed * mult
 	EndIf
-		
-	cam.camera = First camera
 	
 ;	If KeyHit(49)
 ;		;Stop
@@ -264,11 +276,11 @@ Function getInput(R)
 ;	EndIf
 	
 	If KeyDown(16)
-		cam\orient = (cam\orient + 5) Mod 360
+		cam\orient = (cam\orient + 5*mult + 360) Mod 360
 		cam\vorient = (cam\vorient + 5) Mod 360
 		active = 1
 	ElseIf KeyDown(18)
-		cam\orient = (cam\orient - 5 + 360) Mod 360
+		cam\orient = (cam\orient - 5*mult + 360) Mod 360
 		cam\vorient = (cam\vorient - 5 + 360) Mod 360
 		active = 1
 	EndIf
@@ -281,8 +293,8 @@ Function getInput(R)
 		cam\vx = offsetStep(cam\vx,cam\vy, d,ang+cam\vorient, 1)
 		cam\vy = offsetStep(cam\vx,cam\vy, d,ang+cam\vorient, 2)
 		
-		nx# = offsetStep(cam\x,cam\y, d,ang+cam\orient, 1)
-		ny# = offsetStep(cam\x,cam\y, d,ang+cam\orient, 2)
+		nx# = offsetStep(cam\x,cam\y, d,ang+1*cam\orient, 1)
+		ny# = offsetStep(cam\x,cam\y, d,ang+1*cam\orient, 2)
 		
 		Local out#[2]
 		tempx# = 0
@@ -304,7 +316,7 @@ Function getInput(R)
 			max# = 10000
 			pick = Null
 			
-			DebugLog iters
+			;DebugLog iters
 			
 			For b.boundary = Each boundary
 				If b <> crossed
@@ -312,15 +324,15 @@ Function getInput(R)
 					
 					If out[0] = 1 ;there was an intersection
 						;out[1] = -out[1]
-						createPoint(out[1],out[2], 0,255,255, 1,1)
+						;createPoint(out[1],out[2], 0,255,255, 1,1)
 						
 						done = 0
 						d# = hyperD(out[1],out[2], cam\x,cam\y)
-						DebugLog "d = "+d
+						;DebugLog "d = "+d
 						If d < max
 							max = d
 							pick = b
-							DebugLog "pick: "+Str(pick)
+						;	DebugLog "pick: "+Str(pick)
 						EndIf
 					EndIf
 				EndIf
@@ -329,31 +341,51 @@ Function getInput(R)
 			If Not done
 				intersection(pick\x1,pick\y1, pick\x2,pick\y2, cam\x,cam\y, nx,ny, out)
 				;out[1] = -out[1]
-				createPoint(out[1],out[2], 0,255,0, 1,1)
+				;createPoint(out[1],out[2], 0,255,0, 1,1)
 				iters = iters + 1
 				
-				DebugLog " (intersection) out[1] = "+out[1]+", out[2] = "+out[2]
+				;DebugLog " (intersection) out[1] = "+out[1]+", out[2] = "+out[2]
 				
 				cam\x = out[1]
 				cam\y = out[2]
 				
-				flipOverLine(nx,ny, pick\x1,pick\y1, pick\x2,pick\y2, out)
-				createPoint(out[1],out[2], 255,255,0, 1,1)
+				;ang1# = hyperAng(cam\x,cam\y, nx,ny)
 				
-				DebugLog " (reflection)   out[1] = "+out[1]+", out[2] = "+out[2]
+				flipOverLine(nx,ny, pick\x1,pick\y1, pick\x2,pick\y2, out)
+				;createPoint(out[1],out[2], 255,255,0, 1,1)
+				
+				;DebugLog " (reflection)   out[1] = "+out[1]+", out[2] = "+out[2]
 				
 				nx = out[1]
 				ny = out[2]
 				
+				;ang2# = hyperAng(cam\x,cam\y, nx,ny)
+				
+				ang3# = hyperAng(cam\x,cam\y, pick\x1,pick\y1)
+				
+				;DebugLog Str(pick)
+				;DebugLog "cam\orient = "+cam\orient
+				;DebugLog "ang3 = "+ang3
+				
+				angdiff# = ang3 - (cam\orient) ;( (ang3 - cam\orient) + 180) Mod 360 - 180
+				
+				;DebugLog "angdiff = "+angdiff
+				
+				cam\orient = (cam\orient + (2* angdiff) + 3600) Mod 360
+				
+				;DebugLog "new cam\orient = "+cam\orient
+				
+				cam\yparity = Not cam\yparity
+				
 				crossed = pick
 				
-				DebugLog ""
+				;DebugLog ""
 				
-				If iters > 2
-					DebugLog "Wah!"
-					DebugLog ""
+				;If iters > 2
+					;DebugLog "Wah!"
+					;DebugLog ""
 					;Exit
-				EndIf
+				;EndIf
 			EndIf
 
 		Wend
@@ -428,11 +460,13 @@ Function draw(R)
 		Local tXY#[2]
 		translate(p\x,p\y, cam\x,cam\y, tXY)
 		
-		tu# = -transform(tXY[1],tXY[2], 1)
-		tv# = transform(tXY[1],tXY[2], 2)
+		mult = 1 - 2*cam\yparity
 		
-		p\tu = tu*Cos(cam\orient) - tv*Sin(cam\orient)
-		p\tv = tu*Sin(cam\orient) + tv*Cos(cam\orient)
+		tu# = -transform(tXY[1],tXY[2], 1)
+		tv# = mult * transform(tXY[1],tXY[2], 2)
+		
+		p\tu = tu*Cos(cam\orient*mult) - tv*Sin(cam\orient*mult)
+		p\tv = tu*Sin(cam\orient*mult) + tv*Cos(cam\orient*mult)
 		
 		If p\show
 			Color p\r,p\g,p\b
@@ -594,8 +628,8 @@ End Function
 
 Function translate#(px#,py#, tx#,ty#, out#[2]) ;tx,ty to origin
 
-	pt# = Sqr(1+px*px+py*py)
-	tt# = Sqr(1+tx*tx+ty*ty)
+	pt# = Sqr(1.+px*px+py*py)
+	tt# = Sqr(1.+tx*tx+ty*ty)
 	
 	If tx = 0 And ty = 0
 		out[1] = px
@@ -1018,10 +1052,13 @@ Function D#(x1#,y1#, x2#,y2#)
 End Function
 
 Function hyperD#(x1#,y1#, x2#,y2#)
-;	Local out#[2]
-;	translate(x2,y2, x1,y1, out)
-;	Return Sqr(out[1]*out[1] + out[2]*out[2])
-	Return Sqr( (1+x1*x1+y1*y1)*(1+x2*x2+y2*y2) ) - x1*x2 - y1*y2
+	Return acosh( Sqr( (1+x1*x1+y1*y1)*(1+x2*x2+y2*y2) ) - x1*x2 - y1*y2 )
+End Function
+
+Function hyperAng(x1#,y1#, x2#,y2#)
+	Local out#[2]
+	translate(x2,y2, x1,y1, out)
+	Return ATan2(out[2],out[1])
 End Function
 
 Function circ(x,y,r, fill=0)
