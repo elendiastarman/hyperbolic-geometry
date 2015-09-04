@@ -82,7 +82,7 @@ Function init(n,k)
 ;	rad# = 2*dis^2*(1-Cos(phi)) + dis^4*(1-Cos(phi))^2
 	rad# = dis*(Sqr(1+dis^2)*(1-Cos(phi))*Cos(theta/2) + Sin(phi)*Sin(theta/2))
 
-	distanceLimit = 5^2
+	distanceLimit = 8^2
 	limit = 1000
 	tolerance# = 0.1
 	
@@ -103,6 +103,8 @@ Function init(n,k)
 	cam.camera = New camera
 	cam\id = 1
 	cam\snap = First point
+	cam\x = 0.01
+	cam\y = 0.01
 	
 	;draw(R)
 	;WaitKey
@@ -164,7 +166,7 @@ Function init(n,k)
 	Wend
 	
 	
-	Local bounds.point[100]
+	;Local bounds.point[100]
 	
 	;create boundary lines
 	For i = 0 To n-1
@@ -175,14 +177,19 @@ Function init(n,k)
 		b\x2 = dis*Cos(90+(i+1)*theta)
 		b\y2 = dis*Sin(90+(i+1)*theta)
 		
-		bounds[i+1] = createPoint(b\x1,b\y1, 255,0,0, 1)
-		bounds[i+1]\numLinks = 1
+		b1.point = createPoint(b\x1,b\y1, 255,0,0, 1)
+		b2.point = createPoint(b\x2,b\y2, 255,0,0, 1)
+		b1\numLinks = 1
+		b1\links[1] = b2
 		
-		If i > 0
-			bounds[i+1]\links[1] = bounds[i]
-		EndIf
+		;bounds[i+1] = createPoint(b\x1,b\y1, 255,0,0, 1)
+		;bounds[i+1]\numLinks = 1
+		
+		;If i > 0
+		;	bounds[i+1]\links[1] = bounds[i]
+		;EndIf
 	Next
-	bounds[1]\links[1] = bounds[n]
+	;bounds[1]\links[1] = bounds[n]
 	
 End Function
 
@@ -345,7 +352,7 @@ Function getInput(R)
 				If iters > 2
 					DebugLog "Wah!"
 					DebugLog ""
-					Exit
+					;Exit
 				EndIf
 			EndIf
 
