@@ -1,6 +1,6 @@
 Graphics 700,700
 
-R = 300
+R = 550
 
 Type point
 	Field id
@@ -410,20 +410,6 @@ Function draw(R)
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
 	Line gw/2,gh/2-2, gw/2,gh/2+2
-
-End Function
-
-Function plotCoords(x#,y#, r=255,g=255,b=255, rad=300)
-	cam.camera = First camera
-
-	Local out#[2]
-	translate(x,y, -cam\x,-cam\y, out)
-	
-	nx# = transform(out[1],out[2],1)*rad + GraphicsWidth()/2
-	ny# = transform(out[1],out[2],2)*rad + GraphicsHeight()/2
-	
-	Color r,g,b
-	circ(nx,ny, 2,1)
 
 End Function
 
