@@ -1,6 +1,6 @@
-Graphics 700,700,32,2
+Graphics 300,300
 
-R = 550
+R = 250
 
 Type point
 	Field id
@@ -41,6 +41,9 @@ End Type
 n = 3
 k = 7
 
+Global numFrames = 0
+Global frameLimit = 38
+
 init(n,k)
 draw(R)
 
@@ -51,6 +54,7 @@ While Not KeyHit(1)
 	
 		Cls
 	
+		numFrames = numFrames + 1
 		draw(R)
 	
 		Flip
@@ -221,6 +225,10 @@ Function getInput(R)
 		active = 1
 	EndIf
 	
+	If numFrames < frameLimit
+		ty = -scrollSpeed * mult
+	EndIf
+	
 	If tx <> 0 Or ty <> 0
 
 		d# = Sqr(tx*tx + ty*ty)
@@ -300,7 +308,7 @@ End Function
 Function draw(R)
 
 	gw = GraphicsWidth()
-	gh = GraphicsHeight()
+	gh = GraphicsHeight()	
 
 	Color 255,255,255
 	circ(gw/2,gh/2, R, 0)
@@ -414,6 +422,8 @@ Function draw(R)
 	Color 255,255,0
 	Line gw/2-2,gh/2, gw/2+2,gh/2
 	Line gw/2,gh/2-2, gw/2,gh/2+2
+	
+	SaveBuffer(BackBuffer(),"Hyperbolic infinite tessellation frames/hyperbolic_infiniteTessellation_frame"+numFrames+".png")
 
 End Function
 

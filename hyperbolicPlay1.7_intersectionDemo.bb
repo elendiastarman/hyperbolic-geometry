@@ -1,6 +1,6 @@
-Graphics 700,700,32,2
+Graphics 700,700
 
-R = 550
+R = 300
 
 Type point
 	Field id
@@ -41,7 +41,30 @@ End Type
 n = 3
 k = 7
 
-init(n,k)
+;init(n,k)
+
+
+cam.camera = New camera
+cam\x = 0.5
+cam\y = 1.5
+cam\orient = 30
+
+p1.point = createPoint(0,0, 255,0,0, 1)
+p2.point = createPoint(1,0, 255,0,255, 1)
+p1\numLinks = 1
+p1\links[1] = p2
+
+p3.point = createPoint(0.5,1, 0,0,255, 1)
+p4.point = createPoint(1.5,-1, 0,255,255, 1)
+p3\numLinks = 1
+p3\links[1] = p4
+
+Local out#[2]
+intersection(p1\x,p1\y, p2\x,p2\y,  p3\x,p3\y, p4\x,p4\y, out)
+p5.point = createPoint(out[1],out[2], 255,255,0, 1)
+
+cam\snap = First point
+
 draw(R)
 
 SetBuffer(BackBuffer())
@@ -62,16 +85,24 @@ End
 
 Function init(n,k)
 
-;	n = polygons around a point
+;	n = 3 ;polygons around a point
 	theta# = 360./n
 	
-;	k = sides per polygon
+;	k = 7 ;sides per polygon
 	phi# = 360./k
 	
 	numer# = (1+Cos(phi))*Cos(theta/2)
 	denom# = Sin(phi)*Sin(theta/2)
 
 	dis# = Sqr( (numer/denom)^2 - 1 )
+;	rad# = cosh(dis)
+;	rad2# = acosh(dis)
+;	DebugLog "dis = "+dis+", rad = "+rad+", rad2 = "+rad2+", cosh(rad2) = "+cosh(rad2)
+	
+;	DebugLog invTransform(0.95,0,1)+","+invTransform(0.95,0,2)
+
+;	rad# = (1+(dis^2)*(1-Cos(phi)))
+;	rad# = 2*dis^2*(1-Cos(phi)) + dis^4*(1-Cos(phi))^2
 	rad# = dis*(Sqr(1+dis^2)*(1-Cos(phi))*Cos(theta/2) + Sin(phi)*Sin(theta/2))
 
 	distanceLimit = 50^2
@@ -97,6 +128,9 @@ Function init(n,k)
 	cam\snap = First point
 	cam\x = 0.01
 	cam\y = 0.01
+	
+	;draw(R)
+	;WaitKey
 	
 	i = 0
 	
@@ -138,7 +172,16 @@ Function init(n,k)
 				q = q+1
 				queue[q] = np
 				ao[q] = ATan2(offXY[2],offXY[1])
+				
+			;	DebugLog "Point created! "+q
 			EndIf
+			
+;			If q > limit
+;				Return
+;			EndIf
+			
+			;draw(R)
+			;WaitKey
 			
 			If KeyDown(28) Return
 			
@@ -151,12 +194,36 @@ Function init(n,k)
 	
 	;create boundary lines
 	For i = 0 To n-1
+		;createPoint(dis*Cos(90+b*theta),dis*Sin(90+b*theta), 255,0,0, 1)
 		b.boundary = New boundary
 		b\x1 = dis*Cos(90+(i+off)*theta)
 		b\y1 = dis*Sin(90+(i+off)*theta)
 		b\x2 = dis*Cos(90+(i+1+off)*theta)
 		b\y2 = dis*Sin(90+(i+1+off)*theta)
+		
+		;b1.point = createPoint(b\x1,b\y1, 255,0,0, 1)
+		;b2.point = createPoint(b\x2,b\y2, 255,0,0, 1)
+		;b1\numLinks = 1
+		;b1\links[1] = b2
+		
+		If i = 0
+			r = 255: g=0: bl=0
+		ElseIf i = 1
+			r = 0: g=255: bl=0
+		ElseIf i = 2
+			r = 0: g=0: bl=255
+		Else
+			r = 255: g=0: bl=255
+		EndIf
+		
+		bounds[i+1] = createPoint(b\x1,b\y1, r,g,bl, 1)
+		bounds[i+1]\numLinks = 1
+		
+		If i > 0
+			bounds[i+1]\links[1] = bounds[i]
+		EndIf
 	Next
+	bounds[1]\links[1] = bounds[n]
 	
 End Function
 
@@ -198,17 +265,38 @@ Function getInput(R)
 	scrollSpeed# = 0.10
 	k# = cosh(scrollSpeed)
 	
-	mult = 1 - 2*cam\yparity
+	mult = -(2*cam\yparity - 1)
 	
 	If KeyDown(32) Or KeyDown(205)
-		tx = -scrollSpeed
+		tx = -scrollSpeed ;* mult
 	ElseIf KeyDown(30) Or KeyDown(203)
-		tx =  scrollSpeed
+		tx =  scrollSpeed ;* mult
 	EndIf
 	If KeyDown(17) Or KeyDown(200)
 		ty = -scrollSpeed * mult
 	ElseIf KeyDown(31) Or KeyDown(208)
 		ty =  scrollSpeed * mult
+	EndIf
+	
+	If KeyHit(49)
+		;Stop
+		If cam\snap = First point
+			cam\snap = Last point
+		Else
+			cam\snap = Before cam\snap
+		EndIf
+		cam\x = cam\snap\x
+		cam\y = cam\snap\y
+		active = 1
+	ElseIf KeyHit(50)
+		If cam\snap = Last point
+			cam\snap = First point
+		Else
+			cam\snap = After cam\snap
+		EndIf
+		cam\x = cam\snap\x
+		cam\y = cam\snap\y
+		active = 1
 	EndIf
 	
 	If KeyDown(16)
@@ -233,30 +321,42 @@ Function getInput(R)
 		ny# = offsetStep(cam\x,cam\y, d,ang+1*cam\orient, 2)
 		
 		Local out#[2]
+		tempx# = 0
+		tempy# = 0
+		intX# = 0
+		intY# = 0
 		
 		done = 0
 		crossed.boundary = Null
 		pick.boundary = Null
+		
+		iters = 0
+		
+		;DebugLog "cam\x = "+cam\x+", cam\y = "+cam\y
+		;DebugLog "nx = "+nx+", ny = "+ny
 		
 		While Not done
 			done = 1
 			max# = 10000
 			pick = Null
 			
+			;DebugLog iters
+			
 			For b.boundary = Each boundary
 				If b <> crossed
 					intersection(b\x1,b\y1, b\x2,b\y2, cam\x,cam\y, nx,ny, out)
 					
 					If out[0] = 1 ;there was an intersection
+						;out[1] = -out[1]
+						;createPoint(out[1],out[2], 0,255,255, 1,1)
+						
 						done = 0
 						d# = hyperD(out[1],out[2], cam\x,cam\y)
-
-						If pick = Null
+						;DebugLog "d = "+d
+						If d < max
 							max = d
 							pick = b
-						ElseIf d < max
-							max = d
-							pick = b
+						;	DebugLog "pick: "+Str(pick)
 						EndIf
 					EndIf
 				EndIf
@@ -264,21 +364,52 @@ Function getInput(R)
 			
 			If Not done
 				intersection(pick\x1,pick\y1, pick\x2,pick\y2, cam\x,cam\y, nx,ny, out)
-
+				;out[1] = -out[1]
+				;createPoint(out[1],out[2], 0,255,0, 1,1)
+				iters = iters + 1
+				
+				;DebugLog " (intersection) out[1] = "+out[1]+", out[2] = "+out[2]
+				
 				cam\x = out[1]
 				cam\y = out[2]
 				
-				flipOverLine(nx,ny, out[1],out[2], pick\x2,pick\y2, out)
+				;ang1# = hyperAng(cam\x,cam\y, nx,ny)
+				
+				flipOverLine(nx,ny, pick\x1,pick\y1, pick\x2,pick\y2, out)
+				;createPoint(out[1],out[2], 255,255,0, 1,1)
+				
+				;DebugLog " (reflection)   out[1] = "+out[1]+", out[2] = "+out[2]
 				
 				nx = out[1]
 				ny = out[2]
 				
+				;ang2# = hyperAng(cam\x,cam\y, nx,ny)
+				
 				ang3# = hyperAng(cam\x,cam\y, pick\x1,pick\y1)
 				
-				cam\orient = (2*ang3 - cam\orient + 3600) Mod 360
+				;DebugLog Str(pick)
+				;DebugLog "cam\orient = "+cam\orient
+				;DebugLog "ang3 = "+ang3
+				
+				angdiff# = ang3 - (cam\orient) ;( (ang3 - cam\orient) + 180) Mod 360 - 180
+				
+				;DebugLog "angdiff = "+angdiff
+				
+				cam\orient = (cam\orient + (2* angdiff) + 3600) Mod 360
+				
+				;DebugLog "new cam\orient = "+cam\orient
+				
 				cam\yparity = Not cam\yparity
 				
 				crossed = pick
+				
+				;DebugLog ""
+				
+				;If iters > 2
+					;DebugLog "Wah!"
+					;DebugLog ""
+					;Exit
+				;EndIf
 			EndIf
 
 		Wend
@@ -290,8 +421,48 @@ Function getInput(R)
 		cam\x = nx
 		cam\y = ny
 		
+;		Local newXY#[2]
+;		translate(cam\x,cam\y, -offX,-offY, newXY)
+		
+;		cam\x = newXY[1]
+;		cam\y = newXY[2]
+		
 		active = 1
 	EndIf
+	
+;	mouseMoving = (MouseXSpeed() Or MouseYSpeed())
+;	
+;	mbutton = 0
+;	If (MouseDown(1) And mouseMoving) Or MouseHit(1)
+;		mbutton = 1
+;	ElseIf (MouseDown(2) And mouseMoving) Or MouseHit(2)
+;		mbutton = 2
+;	EndIf
+;	
+;	If mbutton > 0
+;		u1# = (mx-GraphicsWidth()/2.)/R
+;		v1# = (my-GraphicsHeight()/2.)/R
+;		
+;		x1# = invTransform(u1,v1,1)
+;		y1# = invTransform(u1,v1,2)
+;		
+;		Local tXY#[2]
+;		translate(-x1,y1, -cam\x,-cam\y, tXY)
+;		
+;		p.point = Last point
+;		While p <> First point And p\mouseControlled <> mbutton
+;			p = Before p
+;		Wend
+;		
+;		p\x = tXY[1]
+;		p\y = tXY[2]
+;		
+;		;DebugLog tXY[1]+", "+tXY[2]
+;		
+;		active = 1
+;	EndIf
+	
+	;If MouseXSpeed() Or MouseYSpeed() Return 1
 	
 	Return active
 	
@@ -417,6 +588,20 @@ Function draw(R)
 
 End Function
 
+Function plotCoords(x#,y#, r=255,g=255,b=255, rad=300)
+	cam.camera = First camera
+
+	Local out#[2]
+	translate(x,y, -cam\x,-cam\y, out)
+	
+	nx# = transform(out[1],out[2],1)*rad + GraphicsWidth()/2
+	ny# = transform(out[1],out[2],2)*rad + GraphicsHeight()/2
+	
+	Color r,g,b
+	circ(nx,ny, 2,1)
+
+End Function
+
 Function offsetStep#(px#,py#, d#,theta#, which)
 	k# = (Exp(d)+1/Exp(d))/2
 	
@@ -448,6 +633,20 @@ Function offsetStep#(px#,py#, d#,theta#, which)
 	ElseIf which = 2
 		Return py + rpos*Sin(theta)
 	EndIf
+
+End Function
+
+Function translateUV#(pu#,pv#, tu#,tv#, which) ;(pu,pv) = point to translate, (tu,tv) = point to move to origin
+
+		vdotx# = pu*tu + pv*tv ;tu*p\u + tv*p\v
+		mag2v# = tu*tu + tv*tv ;tu*tu + tv*tv
+		mag2x# = pu*pu + pv*pv ;p\u*p\u + p\v*p\v
+		
+		If which = 1
+			Return ( (1.+2*vdotx+mag2x)*tu + (1.-mag2v)*pu ) / (1. + 2*vdotx + mag2v*mag2x)
+		ElseIf which = 2
+			Return ( (1.+2*vdotx+mag2x)*tv + (1.-mag2v)*pv ) / (1. + 2*vdotx + mag2v*mag2x)
+		EndIf
 
 End Function
 
@@ -502,6 +701,10 @@ End Function
 
 Function transform#(x#,y#, which)
 
+	;If x*x+y*y > 1
+	;	Return -1
+	;EndIf
+
 	t# = Sqr(1+x*x+y*y)
 
 	If which = 1
@@ -534,11 +737,15 @@ Function polygon(centerX#,centerY#, dis#, sides, angoffset#)
 	prevPoint = Null
 	
 	begPoint.point = Null
+	
+;	centerU# = transform(centerX,centerY, 1)
+;	centerV# = transform(centerX,centerY, 2)
 
 	For i = 0 To sides-1
 	
 		p.point = New point
-
+		;tempx# = offsetStep(0,0, rad, i*angstep + angoffset, 1)
+		;tempy# = offsetStep(0,0, rad, i*angstep + angoffset, 2)
 		tempx# = rad*Cos(i*angstep + angoffset)
 		tempy# = rad*Sin(i*angstep + angoffset)
 		
@@ -554,6 +761,10 @@ Function polygon(centerX#,centerY#, dis#, sides, angoffset#)
 		
 		p\id = idStart + 1
 		idStart = idStart + 1
+		
+		;If begPoint <> Null
+		;	begPoint = p
+		;EndIf
 		
 		If prevPoint <> Null
 			prevPoint\links[1] = p
@@ -576,7 +787,72 @@ Function polygon(centerX#,centerY#, dis#, sides, angoffset#)
 
 End Function
 
-Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, rad#, sides)
+Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, dis#, sides)
+
+	angstep# = 360./sides
+	rad# = dis;cosh(dis)
+	
+	prevPoint.point = Last point
+	idStart = prevPoint\id
+	prevPoint = Null
+	
+	begPoint.point = Null
+	
+;	centerU# = transform(centerX,centerY, 1)
+;	centerV# = transform(centerX,centerY, 2)
+
+	Local orientT_XY#[2]
+	translate(orientX,orientY, -centerX,-centerY, orientT_XY)
+	
+	angoffset# = (ATan2(orientT_XY[2], orientT_XY[1]) + 180*((sides+0) Mod 2)) Mod 360
+
+	For i = 0 To sides-1
+	
+		p.point = New point
+		;tempx# = offsetStep(0,0, rad, i*angstep + angoffset, 1)
+		;tempy# = offsetStep(0,0, rad, i*angstep + angoffset, 2)
+		tempx# = rad*Cos(i*angstep + angoffset)
+		tempy# = rad*Sin(i*angstep + angoffset)
+		
+		Local newXY#[2]
+		translate(tempx,tempy, -centerX,-centerY, newXY)
+		
+		p\x = newXY[1]
+		p\y = newXY[2]
+		
+		p\r = 255
+		p\g = 255
+		p\b = 255
+		
+		p\id = idStart + 1
+		idStart = idStart + 1
+		
+		;If begPoint <> Null
+		;	begPoint = p
+		;EndIf
+		
+		If prevPoint <> Null
+			prevPoint\links[1] = p
+			prevPoint\numLinks = 1
+		EndIf
+		
+		prevPoint = p
+	
+	Next
+	
+	prevPoint\numLinks = 1
+	For j = 1 To sides-1
+		p = Before p
+	Next
+	prevPoint\links[1] = p
+	
+	p\r = 255
+	p\g = 0
+	p\b = 0
+
+End Function
+
+Function polygon_old(centerX#,centerY#, rad#, sides, angoffset#)
 
 	angstep# = 360./sides
 	
@@ -586,22 +862,26 @@ Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, rad#, sides)
 	
 	begPoint.point = Null
 	
-	Local orientT_XY#[2]
-	translate(orientX,orientY, -centerX,-centerY, orientT_XY)
-	
-	angoffset# = (ATan2(orientT_XY[2], orientT_XY[1]) + 180*((sides+0) Mod 2)) Mod 360
+	centerU# = transform(centerX,centerY, 1)
+	centerV# = transform(centerX,centerY, 2)
 
 	For i = 0 To sides-1
 	
 		p.point = New point
-		tempx# = rad*Cos(i*angstep + angoffset)
-		tempy# = rad*Sin(i*angstep + angoffset)
+		tempx# = offsetStep(0,0, rad, i*angstep + angoffset, 1)
+		tempy# = offsetStep(0,0, rad, i*angstep + angoffset, 2)
 		
-		Local newXY#[2]
-		translate(tempx,tempy, -centerX,-centerY, newXY)
+;		p\x = tempx ;translateUV(tempx,tempy, -centerX,-centerY, 1)
+;		p\y = tempy ;translateUV(tempx,tempy, -centerX,-centerY, 2)
 		
-		p\x = newXY[1]
-		p\y = newXY[2]
+		tempu# = transform(tempx,tempy, 1)
+		tempv# = transform(tempx,tempy, 2)
+		
+		p\u = translateUV(tempu,tempv, centerU,centerV, 1)
+		p\v = translateUV(tempu,tempv, centerU,centerV, 2)
+		
+		p\x = invTransform(p\u,p\v, 1)
+		p\y = invTransform(p\u,p\v, 2)
 		
 		p\r = 255
 		p\g = 255
@@ -609,6 +889,10 @@ Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, rad#, sides)
 		
 		p\id = idStart + 1
 		idStart = idStart + 1
+		
+		;If begPoint <> Null
+		;	begPoint = p
+		;EndIf
 		
 		If prevPoint <> Null
 			prevPoint\links[1] = p
@@ -624,20 +908,26 @@ Function polygon_oriented(centerX#,centerY#, orientX#,orientY#, rad#, sides)
 		p = Before p
 	Next
 	prevPoint\links[1] = p
-	
-	p\r = 255
-	p\g = 0
-	p\b = 0
 
 End Function
 
-Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;strict checks the line >segments<
+Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1, debug=0) ;strict checks the line >segments<
 
 	;XY[0] will be used to store failure (0) or success (1)
 	XY[0] = 0
 
 	If (x1 = u1 And y1 = v1 And x2 = u2 And y2 = v2) Or (x1 = u2 And y1 = v2 And x2 = u1 And y2 = v1)
 		Return
+	EndIf
+
+	If debug = 1
+		DebugLog "---------------------"
+		DebugLog "Original coordinates:"
+		DebugLog " x1 = "+x1+", y1 = "+y1
+		DebugLog " x2 = "+x2+", y2 = "+y2
+		DebugLog " u1 = "+u1+", v1 = "+v1
+		DebugLog " u2 = "+u2+", v2 = "+v2
+		DebugLog ""
 	EndIf
 
 	Local tXY_1#[2]
@@ -648,6 +938,14 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;st
 	translate(u1,v1, x1,y1, tXY_2)
 	translate(u2,v2, x1,y1, tXY_3)
 	
+	If debug = 1
+		DebugLog "Translated coordinates:"
+		DebugLog " tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog " tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog " tXY_3[1] = "+tXY_3[1]+", tXY_3[2] = "+tXY_3[2]
+		DebugLog ""
+	EndIf
+	
 	ang# = ATan2(tXY_1[2],tXY_1[1]) ;calculate angle to (x2,y2)
 	
 	tU1# = tXY_2[1]*Cos(-ang) - tXY_2[2]*Sin(-ang) ;rotate (u1,v1) by -ang
@@ -655,6 +953,13 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;st
 	
 	tU2# = tXY_3[1]*Cos(-ang) - tXY_3[2]*Sin(-ang) ;rotate (u2,v2) by -ang
 	tV2# = tXY_3[1]*Sin(-ang) + tXY_3[2]*Cos(-ang)
+	
+	If debug = 1
+		DebugLog "Rotated coordinates (rotated by "+ang+" degrees):"
+		DebugLog " tU1 = "+tU1+", tV1 = "+tV1
+		DebugLog " tU2 = "+tU2+", tV2 = "+tV2
+		DebugLog ""
+	EndIf
 	
 	s# = tU1
 	t# = tV1
@@ -669,7 +974,13 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;st
 	
 	If q*q - p*p <= 0 Return
 	
+	;tk# = Abs(q)*Sqr( 1/(q*q - p*p) )
+	
 	k# = -p*Sgn(q)/Sqr(q*q-p*p)
+	
+	If debug = 1
+		DebugLog "Solution: k = "+k
+	EndIf
 	
 	;intersection point is at (k,0)
 	
@@ -677,6 +988,15 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;st
 	kY# = k*Sin(ang)
 	
 	translate(kX,kY, -x1,-y1, XY) ;translate (0,0) to (x1,y1)
+	
+;	XY[1] = -XY[1] ;I don't really know WHY
+	
+	If debug = 1
+		DebugLog "Final solution:"
+		DebugLog " XY[1] = "+XY[1]+", XY[2] = "+XY[2]
+		DebugLog ""
+	EndIf
+	
 	
 	;line segment test if desired
 	If strict = 1
@@ -686,6 +1006,45 @@ Function intersection(x1#,y1#, x2#,y2#,  u1#,v1#, u2#,v2#, XY#[2], strict=1) ;st
 	Else
 		XY[0] = 1
 	EndIf
+	
+	
+	
+	If debug = 1
+		DebugLog "Sanity check:"
+		
+		translate(x1,y1, XY[1],XY[2], tXY_1)
+		translate(x2,y2, XY[1],XY[2], tXY_2)
+		
+		DebugLog " First pair:"
+		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog "  tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog "  tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1] = "+(tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1])
+		
+		translate(u1,v1, XY[1],XY[2], tXY_1)
+		translate(u2,v2, XY[1],XY[2], tXY_2)
+		
+		DebugLog " Second pair:"
+		DebugLog "  tXY_1[1] = "+tXY_1[1]+", tXY_1[2] = "+tXY_1[2]
+		DebugLog "  tXY_2[1] = "+tXY_2[1]+", tXY_2[2] = "+tXY_2[2]
+		DebugLog "  tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1] = "+(tXY_1[1]*tXY_2[2] - tXY_1[2]*tXY_2[1])
+		
+		DebugLog "---------------------"
+		DebugLog ""
+	EndIf
+
+;	txy1# = Sqr(1+x1*x1+y1*y1)
+;	txy2# = Sqr(1+x2*x2+y2*y2)
+;	
+;	tuv1# = Sqr(1+u1*u1+v1*v1)
+;	tuv2# = Sqr(1+u2*u2+v2*v2)
+;
+;	a = -x1*txy2 + x2*txy1
+;	b = -y1*txy2 + y1*txy2
+;	
+;	c = -u1*tuv2 + u2*tuv1
+;	d = -v1*tuv2 + v1*tuv2
+	
+;	XY[0] = 1
 	
 	Return
 
@@ -707,6 +1066,8 @@ Function flipOverLine(px#,py#, x1#,y1#, x2#,y2#, out#[2])
 	ny# = tXY_2[1]*Sin(angdiff) + tXY_2[2]*Cos(angdiff)
 	
 	translate(nx,ny, -x1,-y1, out)
+	
+	;out[1] = -out[1]
 
 End Function
 
